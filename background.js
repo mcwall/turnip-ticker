@@ -1,3 +1,5 @@
+const stopWords = ["daisy", "mae", "pig", "snot", "swine"]
+
 var token = ""
 
 function refresh() {
@@ -18,7 +20,7 @@ function refresh() {
       token = r.access_token
     })
     .then(requestAndParse)
-    .catch(e => alert(e));
+    .catch(e => showError(e));
 }
 
 function requestAndParse() {
@@ -30,22 +32,27 @@ function requestAndParse() {
     })
     .then(r => r.json())
     .then(processResponse)
-    .catch(e => alert(e));
+    .catch(e => showError(e));
 }
 
-refresh();
-var interval = setInterval(requestAndParse, 10000);
-var tokenInterval = setInterval(refresh, 60000 * 60);
-
 function processResponse(res) {
-  var data = res.data
-  var latestPosting = data.children[0].data;
-  var ellapsedSeconds = new Date().getTime() / 1000.0 - latestPosting.created_utc
-  console.log(ellapsedSeconds);
-  if (ellapsedSeconds < 60) {
-    clearInterval(interval);
-    openPosting(latestPosting);
+  let latestPosting = res.data.children[0].data;
+  let ellapsedSeconds = new Date().getTime() / 1000.0 - latestPosting.created_utc;
+  if (ellapsedSeconds > 60){
+    return;
   }
+
+  console.log("New Posting: " + latestPosting.title);
+
+  for (const stopWord of stopWords){
+    console.log(stopWord);
+    if (latestPosting.title.toLowerCase().includes(stopWord)){
+      return;
+    }
+  }
+  
+  openPosting(latestPosting);
+  deactivate();
 }
 
 var audio = new Audio("https://upload.wikimedia.org/wikipedia/commons/8/81/Alarm_or_siren.ogg")
@@ -57,4 +64,35 @@ function openPosting(posting) {
   });
 }
 
-chrome.browserAction.onClicked.addListener(refresh);
+var fetchInterval, tokenInterval;
+var isActive = false;
+function activate() {
+  isActive = true;
+  fetchInterval = setInterval(requestAndParse, 10000);
+  tokenInterval = setInterval(refresh, 60000 * 60);
+  chrome.browserAction.setIcon({path: 'icon-active.png'});
+  refresh();
+}
+
+function deactivate() {
+  isActive = false;
+  clearInterval(fetchInterval);
+  clearInterval(tokenInterval);
+  chrome.browserAction.setIcon({path: 'icon.png'});
+}
+
+function showError(e) {
+  console.log(e);
+  isActive = false;
+  chrome.browserAction.setIcon({path: 'icon-error.png'});
+}
+
+function onClicked() {
+  if (isActive)
+    deactivate();
+  else 
+    activate();
+}
+
+chrome.browserAction.onClicked.addListener(onClicked);
+activate();
