@@ -3,7 +3,7 @@
   "description": "Alert when latest Turnip price is posted",
   "version": "1.0",
   "manifest_version": 2,
-  "permissions": ["declarativeWebRequest", "*://*/*"],
+  "permissions": ["webRequest", "*://*/*"],
   "background": {
     "scripts": ["background.js"]
   },
